@@ -77,7 +77,7 @@ const defaultData = () => ({
   ],
   studySessions: [{ id: uid(), date: DAY(TODAY), subject: "Psychology 101", hours: 1.5 }],
   attendance: { attended: 38, total: 42 },
-  preferences: { theme: "dark", notifications: false }
+  preferences: { theme: "dark", notifications: false, name: "" }
 });
 
 let data;
@@ -115,6 +115,19 @@ const niceDate = value => value ? new Date(`${value}T12:00:00`).toLocaleDateStri
 const fullDate = value => new Date(value).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 const todayLabel = () => new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 const collection = key => Array.isArray(data[key]) ? data[key] : [];
+const preferredName = () => String(data.preferences?.name || "").trim();
+function updateProfileUI() {
+  const name = preferredName() || "Your profile";
+  const initial = Array.from(name)[0]?.toLocaleUpperCase() || "V";
+  $(".profile-copy strong").textContent = name;
+  $(".avatar").textContent = initial;
+  $("#topAvatar").textContent = initial;
+}
+function promptForName() {
+  if (preferredName()) return;
+  $("#welcomeBackdrop").hidden = false;
+  requestAnimationFrame(() => $("#welcomeName").focus());
+}
 function save() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
   catch (error) { console.error("Could not save VYBE data:", error); toast("Could not save data. Your browser storage may be full.", "error"); }
@@ -174,7 +187,7 @@ function renderDashboard() {
   const month = DAY(TODAY).slice(0, 7);
   const expenses = collection("expenses").filter(item => item.type !== "Income" && String(item.date || "").startsWith(month)).reduce((sum, item) => sum + Number(item.amount || 0), 0);
   return `
-    <section class="dashboard-hero"><div class="hero-copy"><span class="eyebrow">${todayLabel().toUpperCase()}</span><h1>Good ${new Date().getHours() < 12 ? "morning" : new Date().getHours() < 18 ? "afternoon" : "evening"}, Alex <span>✦</span></h1><p>A fresh page. Let’s make a little room for what matters.</p></div><div class="hero-action"><div class="progress-ring" style="--progress:${percent * 3.6}deg"><strong>${percent}%</strong></div><div class="ring-label"><strong>Your day, in motion</strong><span>${done} of ${todayTasks.length} tasks complete</span></div></div></section>
+    <section class="dashboard-hero"><div class="hero-copy"><span class="eyebrow">${todayLabel().toUpperCase()}</span><h1>Good ${new Date().getHours() < 12 ? "morning" : new Date().getHours() < 18 ? "afternoon" : "evening"}, ${esc(preferredName() || "there")} <span>✦</span></h1><p>A fresh page. Let’s make a little room for what matters.</p></div><div class="hero-action"><div class="progress-ring" style="--progress:${percent * 3.6}deg"><strong>${percent}%</strong></div><div class="ring-label"><strong>Your day, in motion</strong><span>${done} of ${todayTasks.length} tasks complete</span></div></div></section>
     <section class="stats-grid">
       <article class="panel stat-card"><div class="stat-top"><span>Tasks completed</span><span class="stat-icon">✓</span></div><div class="stat-value">${completed}<span class="stat-note">of ${taskTotal} total</span></div></article>
       <article class="panel stat-card"><div class="stat-top"><span>Study time today</span><span class="stat-icon">◷</span></div><div class="stat-value">${studyHours}<span class="stat-note">hours logged</span></div></article>
@@ -399,11 +412,11 @@ let reminderTimer = null;
 function renderAI() {
   const tool = AI_TOOLS.find(item => item[0] === activeTool) || AI_TOOLS[0];
   const prompt = chatHistory.map(item => `<div class="chat-message ${item.role === "assistant" ? "" : "user"} ${item.error ? "error" : ""}">${esc(item.content)}</div>`).join("");
-  return `${heading("A LITTLE HELP, RIGHT WHEN YOU NEED IT","AI studio","A thoughtful co-pilot, here for the big plans and small questions.")}<div class="ai-layout"><aside class="panel ai-tools"><div class="ai-tools-label">YOUR AI TOOLS</div>${AI_TOOLS.map(([name,icon])=>`<button class="ai-tool ${name===activeTool?"active":""}" data-action="select-ai" data-tool="${esc(name)}"><span class="ai-tool-icon">${icon}</span>${esc(name)}</button>`).join("")}</aside><section class="panel ai-chat"><header class="ai-chat-head"><div class="ai-avatar">${tool[1]}</div><div><strong>${esc(tool[0])}</strong><span>Ready when you are · Private to your space</span></div><button class="text-link" style="margin-left:auto" data-action="clear-chat">Clear chat</button></header><div class="chat-messages" id="chatMessages">${prompt || `<div class="chat-welcome"><div class="ai-avatar">${tool[1]}</div><h3>Hi Alex, I’m here to help.</h3><p>${esc(tool[2])} Your messages are sent to the AI provider configured by your VYBE server.</p></div>`}</div><form class="chat-form" id="chatForm"><textarea name="prompt" id="chatPrompt" placeholder="Ask me anything..." required maxlength="12000"></textarea><button class="button button-primary" type="submit" id="chatSend">Send ↗</button></form></section></div>`;
+  return `${heading("A LITTLE HELP, RIGHT WHEN YOU NEED IT","AI studio","A thoughtful co-pilot, here for the big plans and small questions.")}<div class="ai-layout"><aside class="panel ai-tools"><div class="ai-tools-label">YOUR AI TOOLS</div>${AI_TOOLS.map(([name,icon])=>`<button class="ai-tool ${name===activeTool?"active":""}" data-action="select-ai" data-tool="${esc(name)}"><span class="ai-tool-icon">${icon}</span>${esc(name)}</button>`).join("")}</aside><section class="panel ai-chat"><header class="ai-chat-head"><div class="ai-avatar">${tool[1]}</div><div><strong>${esc(tool[0])}</strong><span>Ready when you are · Private to your space</span></div><button class="text-link" style="margin-left:auto" data-action="clear-chat">Clear chat</button></header><div class="chat-messages" id="chatMessages">${prompt || `<div class="chat-welcome"><div class="ai-avatar">${tool[1]}</div><h3>Hi ${esc(preferredName() || "there")}, I’m here to help.</h3><p>${esc(tool[2])} Your messages are sent to the AI provider configured by your VYBE server.</p></div>`}</div><form class="chat-form" id="chatForm"><textarea name="prompt" id="chatPrompt" placeholder="Ask me anything..." required maxlength="12000"></textarea><button class="button button-primary" type="submit" id="chatSend">Send ↗</button></form></section></div>`;
 }
 function renderSettings() {
   const light = data.preferences?.theme === "light";
-  return `${heading("MAKE IT YOURS","Your settings","A few little details about how your space works.")}<div class="settings-grid"><article class="panel settings-card"><h2>Your experience</h2><p>Make VYBE feel right for you.</p><div class="settings-row"><div><strong>Light appearance</strong><small>Switch between a dark and light workspace.</small></div><button class="toggle ${light?"on":""}" data-action="theme-setting" aria-label="Toggle light appearance"></button></div><div class="settings-row"><div><strong>Browser notifications</strong><small>Let your browser remind you about plans.</small></div><button class="toggle ${data.preferences?.notifications?"on":""}" data-action="notifications" aria-label="Toggle notifications"></button></div></article><article class="panel settings-card"><h2>Your data</h2><p>Your information stays in this browser. Download a copy anytime.</p><div class="settings-row"><div><strong>Export your data</strong><small>Save a portable JSON backup.</small></div><button class="button button-small" data-action="export">Export data ↗</button></div><div class="settings-row"><div><strong>Import a backup</strong><small>Restore a previously exported VYBE file.</small></div><button class="button button-small" data-action="import">Choose file ↗</button></div><div class="settings-row"><div><strong>Clear all data</strong><small>This permanently removes this browser’s VYBE data.</small></div><button class="button button-small" data-action="reset" style="color:#f18a93">Clear data</button></div></article><article class="panel settings-card"><h2>AI setup</h2><p>AI requests are sent securely through your VYBE server. Your API key is never stored in this browser.</p><div class="settings-row"><div><strong>Configure your AI provider</strong><small>Set OPENAI_API_KEY on the server, then restart it.</small></div><span class="pill purple">SERVER ONLY</span></div><div class="settings-row"><div><strong>Optional settings</strong><small>AI_API_URL and AI_MODEL can be set as environment variables.</small></div></div></article><article class="panel settings-card"><h2>Your personal space</h2><p>Made for the little moments that add up to a life.</p><div class="settings-row"><div><strong>VYBE</strong><small>Personal life assistant · Data saved locally</small></div><span class="pill green">READY</span></div></article></div>`;
+  return `${heading("MAKE IT YOURS","Your settings","A few little details about how your space works.")}<div class="settings-grid"><article class="panel settings-card"><h2>Your profile</h2><p>VYBE uses your name in greetings. It stays in this browser.</p><form id="profileForm" class="profile-form"><div class="form-field"><label for="profileName">What should we call you?</label><input id="profileName" name="name" type="text" value="${esc(preferredName())}" maxlength="60" autocomplete="name" required></div><button class="button button-small" type="submit">Save name</button></form></article><article class="panel settings-card"><h2>Your experience</h2><p>Make VYBE feel right for you.</p><div class="settings-row"><div><strong>Light appearance</strong><small>Switch between a dark and light workspace.</small></div><button class="toggle ${light?"on":""}" data-action="theme-setting" aria-label="Toggle light appearance"></button></div><div class="settings-row"><div><strong>Browser notifications</strong><small>Let your browser remind you about plans.</small></div><button class="toggle ${data.preferences?.notifications?"on":""}" data-action="notifications" aria-label="Toggle notifications"></button></div></article><article class="panel settings-card"><h2>Your data</h2><p>Your information stays in this browser. Download a copy anytime.</p><div class="settings-row"><div><strong>Export your data</strong><small>Save a portable JSON backup.</small></div><button class="button button-small" data-action="export">Export data ↗</button></div><div class="settings-row"><div><strong>Import a backup</strong><small>Restore a previously exported VYBE file.</small></div><button class="button button-small" data-action="import">Choose file ↗</button></div><div class="settings-row"><div><strong>Clear all data</strong><small>This permanently removes this browser’s VYBE data.</small></div><button class="button button-small" data-action="reset" style="color:#f18a93">Clear data</button></div></article><article class="panel settings-card"><h2>AI setup</h2><p>AI requests are sent securely through your VYBE server. Your API key is never stored in this browser.</p><div class="settings-row"><div><strong>Configure your AI provider</strong><small>In Render, open your VYBE service → Environment, add OPENAI_API_KEY, save, and redeploy.</small></div><span class="pill purple">SERVER ONLY</span></div><div class="settings-row"><div><strong>Optional settings</strong><small>AI_API_URL and AI_MODEL can be set as environment variables.</small></div></div></article><article class="panel settings-card"><h2>Your personal space</h2><p>Made for the little moments that add up to a life.</p><div class="settings-row"><div><strong>VYBE</strong><small>Personal life assistant · Data saved locally</small></div><span class="pill green">READY</span></div></article></div>`;
 }
 
 function renderPage() {
@@ -428,6 +441,18 @@ function renderPage() {
   if (currentPage === "Dashboard") renderCharts();
   if (currentPage === "AI Studio") $("#chatMessages").scrollTop = $("#chatMessages").scrollHeight;
   scheduleNextReminder();
+}
+function savePreferredName(event) {
+  event.preventDefault();
+  const name = String(new FormData(event.target).get("name") || "").trim();
+  if (!name) return toast("Please enter a name.", "error");
+  data.preferences ||= {};
+  data.preferences.name = name.slice(0, 60);
+  save();
+  updateProfileUI();
+  if (event.target.id === "welcomeForm") $("#welcomeBackdrop").hidden = true;
+  renderPage();
+  toast("Your name has been saved.");
 }
 
 function chartOptions() {
@@ -570,7 +595,7 @@ function onAction(target) {
   if (action === "import") { $("#importInput").click(); return; }
   if (action === "reset") {
     if (!confirm("Clear all VYBE data from this browser? This cannot be undone.")) return;
-    data = defaultData(); save(); setTheme(); go("Dashboard"); toast("Your space is fresh again.");
+    data = defaultData(); save(); setTheme(); go("Dashboard"); promptForName(); toast("Your space is fresh again.");
   }
 }
 function toggleTheme() {
@@ -627,7 +652,7 @@ async function importData(file) {
       if (key === "preferences" || key === "attendance") data[key] = { ...fresh[key], ...(imported[key] || {}) };
       else if (Array.isArray(imported[key])) data[key] = imported[key];
     }
-    save(); setTheme(); go("Dashboard"); toast("Your backup has been imported.");
+    save(); setTheme(); go("Dashboard"); promptForName(); toast("Your backup has been imported.");
   } catch (error) {
     toast(error.message || "Could not read that backup file.", "error");
   } finally { $("#importInput").value = ""; }
@@ -643,7 +668,9 @@ function makeToolPrompt(prompt) {
     "Translator":"You translate text accurately while preserving tone and idiom. Ask for the target language if it is unclear.",
     "Goal coach":"You are a supportive goal coach. Help turn aspirations into small, measurable next steps without pressure."
   }[activeTool] || "You are a helpful personal assistant.";
-  return `${context}\n\n${prompt}`;
+  const name = preferredName();
+  const personalization = name ? `The user's preferred name is ${name}. Address them by name naturally, without overusing it.` : "";
+  return `${context}\n\n${personalization}\n\n${prompt}`;
 }
 async function sendAI(event) {
   event.preventDefault();
@@ -681,6 +708,7 @@ document.addEventListener("click", event => {
 document.addEventListener("submit", event => {
   if (event.target.id === "recordForm") storeForm(event);
   if (event.target.id === "chatForm") sendAI(event);
+  if (event.target.id === "welcomeForm" || event.target.id === "profileForm") savePreferredName(event);
 });
 document.addEventListener("input", event => {
   if (event.target.id === "moduleSearch") {
@@ -721,4 +749,6 @@ document.addEventListener("keydown", event => {
 setTheme();
 renderNav();
 renderPage();
+updateProfileUI();
+promptForName();
 if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register(new URL("service-worker.js", document.baseURI)).catch(error => console.error("Could not register the app service worker:", error));
