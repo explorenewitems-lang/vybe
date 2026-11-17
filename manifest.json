@@ -1,0 +1,13 @@
+{
+  "name": "VYBE — Your life, in focus",
+  "short_name": "VYBE",
+  "description": "A calm, personal home for everything on your mind.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#09090f",
+  "theme_color": "#09090f",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
