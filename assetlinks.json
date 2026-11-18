@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.onrender.vybe_1f8n.twa",
+        "sha256_cert_fingerprints": ["0D:3E:2C:16:C2:32:33:0A:40:54:B4:27:AE:5E:56:B6:AF:6F:59:B1:2D:BF:69:7F:75:F2:9A:85:BD:5F:5D:8E"]
+      }
+    }]
