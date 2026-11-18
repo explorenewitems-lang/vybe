@@ -1,4 +1,4 @@
-const CACHE = "vybe-shell-v1";
+const CACHE = "vybe-shell-v2";
 const BASE = new URL(".", self.location.href).pathname;
 const SHELL = ["", "styles.css", "app.js", "manifest.json", "icon.svg"].map(file => `${BASE}${file}`);
 
