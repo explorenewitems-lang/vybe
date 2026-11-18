@@ -1,6 +1,6 @@
-const CACHE = "vybe-shell-v5";
+const CACHE = "vybe-shell-v7";
 const BASE = new URL(".", self.location.href).pathname;
-const SHELL = ["", "styles.css", "app.js", "manifest.json", "icon.svg"].map(file => `${BASE}${file}`);
+const SHELL = ["", "styles.css", "app.js", "manifest.json", "icon.svg", "icon-192.png", "icon-512.png", "icon-512-maskable.png"].map(file => `${BASE}${file}`);
 
 self.addEventListener("install", event => {
   event.waitUntil((async () => {

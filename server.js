@@ -7,13 +7,14 @@ const port = Number(process.env.PORT || 4173);
 const aiRequestWindowMs = 60_000;
 const aiRequestLimit = 20;
 const aiRequestTimes = [];
-const revalidateFiles = new Set(["index.html", "app.js", "styles.css", "manifest.json", "service-worker.js"]);
+const revalidateFiles = new Set(["index.html", "app.js", "styles.css", "manifest.json", "service-worker.js", "icon.svg", "icon-192.png", "icon-512.png", "icon-512-maskable.png"]);
 const mime = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
-  ".svg": "image/svg+xml"
+  ".svg": "image/svg+xml",
+  ".png": "image/png"
 };
 
 function reply(res, status, data) {
@@ -32,6 +33,7 @@ function allowAiRequest() {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   if (req.method === "POST" && url.pathname === "/api/ai") {
+    if (process.env.AI_ENABLED !== "true") return reply(res, 503, { error: "AI is paused. Enable it on the server only after confirming your provider has available credits." });
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) return reply(res, 503, { error: "AI is not configured yet. Set OPENAI_API_KEY in the server environment and restart VYBE." });
     if (!allowAiRequest()) return reply(res, 429, { error: "VYBE is receiving too many AI requests. Please wait a minute and try again." });

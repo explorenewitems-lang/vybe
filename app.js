@@ -12,7 +12,7 @@ const NAV_ITEMS = [
   { name: "Wellness", icon: "♡" },
   { name: "Goals", icon: "◎", key: "goals" },
   { section: "INTELLIGENCE" },
-  { name: "AI Studio", icon: "✦", badge: "AI" },
+  { name: "AI Studio", icon: "✦", badge: "OFF" },
   { name: "Settings", icon: "⚙" }
 ];
 
@@ -220,7 +220,7 @@ function renderPlanner() {
 
 const MODULES = {
   Tasks: { key: "tasks", kicker: "MAKE SPACE FOR WHAT MATTERS", title: "Your tasks", description: "Small steps, steady progress.", add: "New task", search: "Search tasks...", filters: ["All", "To do", "In progress", "Done"], fields: [
-    ["title", "Task", "text", true], ["details", "Details", "textarea"], ["priority", "Priority", "select", ["Low", "Medium", "High"]], ["due", "Due date", "date"], ["status", "Status", "select", ["To do", "In progress", "Done"]]
+    ["title", "Task", "text", true], ["details", "Details", "textarea"], ["priority", "Priority", "select", ["Low", "Medium", "High"]], ["due", "Due date", "date"], ["dueTime", "Due time", "time"], ["reminder", "Reminder", "select", ["None", "At due time", "10 minutes before", "1 hour before"]], ["repeat", "Repeat", "select", ["Does not repeat", "Daily", "Weekly", "Monthly"]], ["status", "Status", "select", ["To do", "In progress", "Done"]]
   ] },
   Habits: { key: "habits", kicker: "LITTLE THINGS, OFTEN", title: "Your habits", description: "Show up for the things that make you feel like you.", add: "Add a habit", fields: [
     ["name", "Habit", "text", true], ["emoji", "Icon or emoji", "text"], ["goal", "Daily intention", "text"]
@@ -258,7 +258,7 @@ function openModal(moduleName, id = null, overrides = null) {
   $("#modalTitle").textContent = `${record ? "Edit" : "Add"} ${moduleName === "Student Hub" ? studentTab === "subjects" ? "subject" : studentTab === "assignments" ? "assignment" : studentTab === "exams" ? "exam" : "study session" : moduleName === "Money" ? "transaction" : moduleName === "Wellness" ? "wellness log" : moduleName === "Habits" ? "habit" : moduleName === "Goals" ? "goal" : moduleName === "Calendar" ? "event" : moduleName === "Tasks" ? "task" : "note"}`;
   $("#modalEyebrow").textContent = moduleName.toUpperCase();
   $("#formFields").innerHTML = fields.map(([name, label, type, extra]) => {
-    const value = record?.[name] ?? (name === "date" || name === "due" ? DAY(TODAY) : name === "target" ? OFFSET_DATE(30) : name === "time" ? "12:00" : name === "reminder" ? "10 minutes before" : name === "priority" ? "Medium" : name === "status" ? "To do" : name === "type" ? "Expense" : name === "progress" ? 0 : name === "hours" || name === "water" || name === "sleep" || name === "weight" || name === "amount" ? "" : "");
+    const value = record?.[name] ?? (name === "date" || name === "due" ? DAY(TODAY) : name === "target" ? OFFSET_DATE(30) : name === "time" ? "12:00" : name === "dueTime" ? "09:00" : name === "reminder" ? (key === "tasks" ? "None" : "10 minutes before") : name === "repeat" ? "Does not repeat" : name === "priority" ? "Medium" : name === "status" ? "To do" : name === "type" ? "Expense" : name === "progress" ? 0 : name === "hours" || name === "water" || name === "sleep" || name === "weight" || name === "amount" ? "" : "");
     let control;
     if (type === "select") control = `<select name="${esc(name)}" ${extra ? "" : ""}>${extra.map(option => `<option ${String(value) === option ? "selected" : ""}>${esc(option)}</option>`).join("")}</select>`;
     else if (type === "textarea") control = `<textarea name="${esc(name)}" placeholder="Write a little...">${esc(value)}</textarea>`;
@@ -306,7 +306,54 @@ function storeForm(event) {
     if (key === "studySessions" && !record.date) record.date = DAY(TODAY);
     data[key].unshift(record);
   }
+  if (key === "tasks") {
+    const savedTask = collection("tasks").find(item => item.id === (id || record.id));
+    if (savedTask) syncRecurringTask(savedTask, editing.record);
+  }
   save(); closeModal(); renderPage(); toast(id ? "Your changes are saved." : "Added to your space.");
+}
+
+function nextRepeatDate(date, repeat, repeatDay) {
+  const next = new Date(`${date}T00:00:00.000Z`);
+  if (!Number.isFinite(next.getTime())) return null;
+  if (repeat === "Daily") next.setUTCDate(next.getUTCDate() + 1);
+  else if (repeat === "Weekly") next.setUTCDate(next.getUTCDate() + 7);
+  else if (repeat === "Monthly") {
+    const day = Number(repeatDay) || next.getUTCDate();
+    next.setUTCDate(1);
+    next.setUTCMonth(next.getUTCMonth() + 1);
+    const lastDay = new Date(Date.UTC(next.getUTCFullYear(), next.getUTCMonth() + 1, 0)).getUTCDate();
+    next.setUTCDate(Math.min(day, lastDay));
+  } else return null;
+  return next.toISOString().slice(0, 10);
+}
+function syncRecurringTask(task, previous) {
+  if (task.status === "Done") {
+    if (!["Daily", "Weekly", "Monthly"].includes(task.repeat)) return;
+    const seriesId = task.repeatSeries || task.id;
+    task.repeatSeries = seriesId;
+    const repeatDay = task.repeat === "Monthly" ? Number(task.repeatDay) || Number((task.due || DAY(TODAY)).slice(-2)) : task.repeatDay;
+    if (task.repeat === "Monthly") task.repeatDay = repeatDay;
+    let nextDue = task.due || DAY(TODAY);
+    do {
+      nextDue = nextRepeatDate(nextDue, task.repeat, repeatDay);
+      if (!nextDue) return;
+    } while (nextDue <= DAY(TODAY));
+    if (collection("tasks").some(item => item.id !== task.id && item.repeatSeries === seriesId && item.due === nextDue)) return;
+    data.tasks.unshift({
+      id: uid(), repeatSeries: seriesId, title: task.title, details: task.details || "",
+      priority: task.priority || "Medium", due: nextDue, dueTime: task.dueTime || "",
+      reminder: task.reminder || "None", repeat: task.repeat, repeatDay, status: "To do"
+    });
+    return;
+  }
+  delete task.completedOn;
+  if (previous?.status !== "Done") return;
+  const seriesId = previous.repeatSeries || task.repeatSeries || task.id;
+  const next = collection("tasks")
+    .filter(item => item.id !== task.id && item.repeatSeries === seriesId && item.due > (task.due || "") && item.status !== "Done")
+    .sort((a, b) => a.due.localeCompare(b.due))[0];
+  if (next) data.tasks = collection("tasks").filter(item => item.id !== next.id);
 }
 
 function recordCell(value, pill = false) {
@@ -332,7 +379,7 @@ function toolbar(module, key, extraFilters = "") {
 function renderTasks(module) {
   let records = filterRecords(collection("tasks"));
   if (moduleFilter !== "All") records = records.filter(record => record.status === moduleFilter);
-  return `${heading(module.kicker, module.title, module.description, button(module.add, "add-record", true, "+"))}${toolbar(module, module.key)}${tableView("Tasks", records.sort((a,b) => (a.due || "").localeCompare(b.due || "")), [["title","Task"],["priority","Priority","pill"],["status","Status","pill"],["due","Due","date"]], module.key)}`;
+  return `${heading(module.kicker, module.title, module.description, button(module.add, "add-record", true, "+"))}${toolbar(module, module.key)}${tableView("Tasks", records.sort((a,b) => (a.due || "").localeCompare(b.due || "")), [["title","Task"],["priority","Priority","pill"],["status","Status","pill"],["due","Due","date"],["dueTime","Time"],["repeat","Repeat"]], module.key)}`;
 }
 function renderHabits(module) {
   const cards = filterRecords(collection("habits")).map(habit => {
@@ -410,13 +457,11 @@ const AI_TOOLS = [
 let chatHistory = [];
 let reminderTimer = null;
 function renderAI() {
-  const tool = AI_TOOLS.find(item => item[0] === activeTool) || AI_TOOLS[0];
-  const prompt = chatHistory.map(item => `<div class="chat-message ${item.role === "assistant" ? "" : "user"} ${item.error ? "error" : ""}">${esc(item.content)}</div>`).join("");
-  return `${heading("A LITTLE HELP, RIGHT WHEN YOU NEED IT","AI studio","A thoughtful co-pilot, here for the big plans and small questions.")}<div class="ai-layout"><aside class="panel ai-tools"><div class="ai-tools-label">YOUR AI TOOLS</div>${AI_TOOLS.map(([name,icon])=>`<button class="ai-tool ${name===activeTool?"active":""}" data-action="select-ai" data-tool="${esc(name)}"><span class="ai-tool-icon">${icon}</span>${esc(name)}</button>`).join("")}</aside><section class="panel ai-chat"><header class="ai-chat-head"><div class="ai-avatar">${tool[1]}</div><div><strong>${esc(tool[0])}</strong><span>Ready when you are · Private to your space</span></div><button class="text-link" style="margin-left:auto" data-action="clear-chat">Clear chat</button></header><div class="chat-messages" id="chatMessages">${prompt || `<div class="chat-welcome"><div class="ai-avatar">${tool[1]}</div><h3>Hi ${esc(preferredName() || "there")}, I’m here to help.</h3><p>${esc(tool[2])} Your messages are sent to the AI provider configured by your VYBE server.</p></div>`}</div><form class="chat-form" id="chatForm"><textarea name="prompt" id="chatPrompt" placeholder="Ask me anything..." required maxlength="12000"></textarea><button class="button button-primary" type="submit" id="chatSend">Send ↗</button></form></section></div>`;
+  return `${heading("A LITTLE HELP, RIGHT WHEN YOU NEED IT","AI studio","AI features are paused while VYBE is running without an active AI plan.")}<section class="panel ai-paused"><div class="ai-paused-mark">✦</div><h2>AI is taking a pause</h2><p>Your tasks, planner, notes and other tools are ready to use. AI will be available again once a funded provider is enabled on VYBE’s server.</p><p>Your API key belongs on the server only—never paste it into the app.</p><button class="button button-primary" data-page="Settings">View AI setup ↗</button></section>`;
 }
 function renderSettings() {
   const light = data.preferences?.theme === "light";
-  return `${heading("MAKE IT YOURS","Your settings","A few little details about how your space works.")}<div class="settings-grid"><article class="panel settings-card"><h2>Your profile</h2><p>VYBE uses your name in greetings. It stays in this browser.</p><form id="profileForm" class="profile-form"><div class="form-field"><label for="profileName">What should we call you?</label><input id="profileName" name="name" type="text" value="${esc(preferredName())}" maxlength="60" autocomplete="name" required></div><button class="button button-small" type="submit">Save name</button></form></article><article class="panel settings-card"><h2>Your experience</h2><p>Make VYBE feel right for you.</p><div class="settings-row"><div><strong>Light appearance</strong><small>Switch between a dark and light workspace.</small></div><button class="toggle ${light?"on":""}" data-action="theme-setting" aria-label="Toggle light appearance"></button></div><div class="settings-row"><div><strong>Browser notifications</strong><small>Let your browser remind you about plans.</small></div><button class="toggle ${data.preferences?.notifications?"on":""}" data-action="notifications" aria-label="Toggle notifications"></button></div></article><article class="panel settings-card"><h2>Your data</h2><p>Your information stays in this browser. Download a copy anytime.</p><div class="settings-row"><div><strong>Export your data</strong><small>Save a portable JSON backup.</small></div><button class="button button-small" data-action="export">Export data ↗</button></div><div class="settings-row"><div><strong>Import a backup</strong><small>Restore a previously exported VYBE file.</small></div><button class="button button-small" data-action="import">Choose file ↗</button></div><div class="settings-row"><div><strong>Clear all data</strong><small>This permanently removes this browser’s VYBE data.</small></div><button class="button button-small" data-action="reset" style="color:#f18a93">Clear data</button></div></article><article class="panel settings-card"><h2>AI setup</h2><p>AI requests are sent securely through your VYBE server. Your API key is never stored in this browser.</p><div class="settings-row"><div><strong>Configure your AI provider</strong><small>In Render, open your VYBE service → Environment, add OPENAI_API_KEY, save, and redeploy.</small></div><span class="pill purple">SERVER ONLY</span></div><div class="settings-row"><div><strong>Optional settings</strong><small>AI_API_URL and AI_MODEL can be set as environment variables.</small></div></div></article><article class="panel settings-card"><h2>Your personal space</h2><p>Made for the little moments that add up to a life.</p><div class="settings-row"><div><strong>VYBE</strong><small>Personal life assistant · Data saved locally</small></div><span class="pill green">READY</span></div></article></div>`;
+  return `${heading("MAKE IT YOURS","Your settings","A few little details about how your space works.")}<div class="settings-grid"><article class="panel settings-card"><h2>Your profile</h2><p>VYBE uses your name in greetings. It stays in this browser.</p><form id="profileForm" class="profile-form"><div class="form-field"><label for="profileName">What should we call you?</label><input id="profileName" name="name" type="text" value="${esc(preferredName())}" maxlength="60" autocomplete="name" required></div><button class="button button-small" type="submit">Save name</button></form></article><article class="panel settings-card"><h2>Your experience</h2><p>Make VYBE feel right for you.</p><div class="settings-row"><div><strong>Light appearance</strong><small>Switch between a dark and light workspace.</small></div><button class="toggle ${light?"on":""}" data-action="theme-setting" aria-label="Toggle light appearance"></button></div><div class="settings-row"><div><strong>Browser notifications</strong><small>Task and event reminders work while VYBE is open in your browser.</small></div><button class="toggle ${data.preferences?.notifications?"on":""}" data-action="notifications" aria-label="Toggle notifications"></button></div></article><article class="panel settings-card"><h2>Your data</h2><p>Your data is saved only in this browser—not synced between devices. Export a backup before switching devices or clearing browser data.</p><div class="settings-row"><div><strong>Export your data</strong><small>Save a portable JSON backup regularly.</small></div><button class="button button-small" data-action="export">Export data ↗</button></div><div class="settings-row"><div><strong>Import a backup</strong><small>Restore a previously exported VYBE file.</small></div><button class="button button-small" data-action="import">Choose file ↗</button></div><div class="settings-row"><div><strong>Clear all data</strong><small>This permanently removes this browser’s VYBE data.</small></div><button class="button button-small" data-action="reset" style="color:#f18a93">Clear data</button></div></article><article class="panel settings-card"><h2>AI setup</h2><p>AI is paused to prevent unexpected provider charges. When ready, enable it only after confirming your provider has available credits.</p><div class="settings-row"><div><strong>Enable AI on the server</strong><small>In Render, add OPENAI_API_KEY and set AI_ENABLED=true. Keep the key in Environment—never in frontend files.</small></div><span class="pill purple">PAUSED</span></div><div class="settings-row"><div><strong>Optional settings</strong><small>AI_API_URL and AI_MODEL can be set as environment variables.</small></div></div></article><article class="panel settings-card"><h2>Your personal space</h2><p>Made for the little moments that add up to a life.</p><div class="settings-row"><div><strong>VYBE</strong><small>Personal life assistant · Data saved locally</small></div><span class="pill green">READY</span></div></article></div>`;
 }
 
 function renderPage() {
@@ -439,7 +484,8 @@ function renderPage() {
   else html = renderDashboard();
   $("#pageContent").innerHTML = html;
   if (currentPage === "Dashboard") renderCharts();
-  if (currentPage === "AI Studio") $("#chatMessages").scrollTop = $("#chatMessages").scrollHeight;
+  const chatMessages = $("#chatMessages");
+  if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
   scheduleNextReminder();
 }
 function savePreferredName(event) {
@@ -511,9 +557,11 @@ function deleteRecord(key, id) {
 function toggleTask(id) {
   const task = collection("tasks").find(item => item.id === id);
   if (!task) return;
+  const previous = { status: task.status, repeatSeries: task.repeatSeries };
   task.status = task.status === "Done" ? "To do" : "Done";
   if (task.status === "Done") task.completedOn = DAY(TODAY);
   else delete task.completedOn;
+  syncRecurringTask(task, previous);
   save(); renderPage();
 }
 function onAction(target) {
@@ -608,19 +656,23 @@ function scheduleNextReminder() {
   reminderTimer = null;
   if (!data.preferences?.notifications || !("Notification" in window) || Notification.permission !== "granted") return;
   const now = Date.now();
-  const next = collection("events").map(event => {
-    const lead = event.reminder === "At time" ? 0 : event.reminder === "10 minutes before" ? 10 : event.reminder === "1 hour before" ? 60 : null;
-    if (lead === null || !event.date) return null;
-    const at = new Date(`${event.date}T${event.time || "09:00"}`).getTime() - lead * 60_000;
-    const key = `vybe-reminder:${event.id}:${at}`;
-    return at > now && !localStorage.getItem(key) ? { event, at, key } : null;
+  const reminders = [
+    ...collection("events").map(event => ({ ...event, kind: "event", reminderTime: event.time || "09:00" })),
+    ...collection("tasks").filter(task => task.status !== "Done").map(task => ({ ...task, kind: "task", date: task.due, reminderTime: task.dueTime || "09:00" }))
+  ];
+  const next = reminders.map(item => {
+    const lead = ["At time", "At due time"].includes(item.reminder) ? 0 : item.reminder === "10 minutes before" ? 10 : item.reminder === "1 hour before" ? 60 : null;
+    if (lead === null || !item.date) return null;
+    const at = new Date(`${item.date}T${item.reminderTime}`).getTime() - lead * 60_000;
+    const key = `vybe-reminder:${item.kind}:${item.id}:${at}`;
+    return at > now && !localStorage.getItem(key) ? { item, at, key } : null;
   }).filter(Boolean).sort((a, b) => a.at - b.at)[0];
   if (!next) return;
   reminderTimer = setTimeout(() => {
     try {
       localStorage.setItem(next.key, "1");
-      const notice = new Notification(`Coming up: ${next.event.title}`, {
-        body: next.event.location || next.event.details || "Your VYBE reminder",
+      const notice = new Notification(`Coming up: ${next.item.title}`, {
+        body: next.item.location || next.item.details || "Your VYBE reminder",
         icon: "icon.svg"
       });
       notice.onclick = () => window.focus();

@@ -194,6 +194,11 @@ select.field-control { min-width: 112px; }
 .calendar-info h3 { margin: 0 0 5px; font-size: 12px; font-weight: 500; }
 .calendar-info p { margin: 0; color: #898694; font-size: 10px; }
 .ai-layout { display: grid; grid-template-columns: 220px 1fr; gap: 15px; min-height: 430px; }
+.ai-paused { display: grid; justify-items: center; max-width: 720px; margin: 28px auto; padding: 48px 30px; text-align: center; }
+.ai-paused-mark { width: 52px; height: 52px; display: grid; place-items: center; margin-bottom: 15px; border: 1px solid rgba(167,139,250,.22); border-radius: 16px; color: #c9b5ff; background: rgba(142,109,234,.13); font-size: 24px; }
+.ai-paused h2 { margin: 0 0 10px; font: 600 18px Manrope,sans-serif; }
+.ai-paused p { max-width: 490px; margin: 0 0 10px; color: var(--muted); font-size: 11px; line-height: 1.7; }
+.ai-paused .button { margin-top: 12px; }
 .ai-tools { padding: 10px; }
 .ai-tools-label { padding: 8px 8px 10px; color: #777481; font-size: 9px; font-weight: 700; letter-spacing: 1px; }
 .ai-tool { width: 100%; display: flex; align-items: center; gap: 9px; padding: 10px 9px; border: 0; border-radius: 8px; color: #a5a2af; background: transparent; text-align: left; cursor: pointer; font-size: 10px; }
