@@ -7,6 +7,7 @@ const port = Number(process.env.PORT || 4173);
 const aiRequestWindowMs = 60_000;
 const aiRequestLimit = 20;
 const aiRequestTimes = [];
+const revalidateFiles = new Set(["index.html", "app.js", "styles.css", "manifest.json", "service-worker.js"]);
 const mime = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
@@ -94,7 +95,7 @@ const server = http.createServer(async (req, res) => {
     }
     res.writeHead(200, {
       "Content-Type": mime[path.extname(filename)] || "application/octet-stream",
-      "Cache-Control": filename.endsWith("service-worker.js") ? "no-cache" : "public, max-age=3600"
+      "Cache-Control": revalidateFiles.has(path.basename(filename)) ? "no-cache" : "public, max-age=3600"
     });
     if (req.method === "HEAD") return res.end();
     res.end(content);

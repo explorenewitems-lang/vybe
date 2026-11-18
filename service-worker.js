@@ -1,10 +1,18 @@
-const CACHE = "vybe-shell-v2";
+const CACHE = "vybe-shell-v4";
 const BASE = new URL(".", self.location.href).pathname;
 const SHELL = ["", "styles.css", "app.js", "manifest.json", "icon.svg"].map(file => `${BASE}${file}`);
 
 self.addEventListener("install", event => {
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)));
-  self.skipWaiting();
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    await Promise.all(SHELL.map(async file => {
+      const url = new URL(file, self.location.origin);
+      const response = await fetch(new Request(url, { cache: "reload" }));
+      if (!response.ok) throw new Error(`Could not cache ${url.pathname}: HTTP ${response.status}`);
+      await cache.put(url, response);
+    }));
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener("activate", event => {
