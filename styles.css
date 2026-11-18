@@ -23,7 +23,7 @@ button, input, textarea, select { font: inherit; }
 .launch-screen { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; overflow: hidden; background: radial-gradient(ellipse at 50% 48%,rgba(113,78,194,.19),transparent 38%),#09090f; animation: launch-screen-out 360ms ease-in 900ms forwards; }
 .launch-screen:before { content: ""; position: absolute; width: 220px; height: 220px; border-radius: 50%; background: rgba(139,101,255,.18); filter: blur(80px); animation: launch-glow-in 900ms ease-out both; }
 .launch-lockup { position: relative; text-align: center; }
-.launch-wordmark { color: #f7f3ff; font: 800 48px/1 Manrope,sans-serif; letter-spacing: .16em; text-indent: .16em; text-shadow: 0 0 35px rgba(166,132,255,.34); animation: launch-wordmark-in 780ms cubic-bezier(.16,1,.3,1) both; }
+.launch-wordmark { color: #f7f3ff; font: 800 clamp(56px,9vw,72px)/1 Manrope,sans-serif; letter-spacing: .16em; text-indent: .16em; text-shadow: 0 0 35px rgba(166,132,255,.34); animation: launch-wordmark-in 780ms cubic-bezier(.16,1,.3,1) both; }
 .launch-wordmark span { color: #a78bfa; }
 .launch-tagline { margin-top: 15px; color: #918a9f; font-size: 9px; font-weight: 600; letter-spacing: .28em; animation: launch-tagline-in 450ms ease-out 260ms both; }
 @keyframes launch-wordmark-in { from { opacity: 0; transform: scale(.38); } 72% { opacity: 1; transform: scale(1.06); } to { opacity: 1; transform: scale(1); } }
