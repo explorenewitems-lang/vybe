@@ -39,12 +39,6 @@ button { color: inherit; }
 .nav-caption { padding: 5px 11px 7px; color: #64616e; font-size: 10px; font-weight: 700; letter-spacing: 1.2px; }
 .nav-badge { margin-left: auto; padding: 2px 7px; border-radius: 20px; color: #d3c4ff; background: rgba(142,111,237,.18); font-size: 10px; }
 .sidebar-bottom { margin-top: auto; }
-.upgrade-card { position: relative; overflow: hidden; margin: 0 3px 14px; padding: 15px; border: 1px solid rgba(162,135,255,.16); border-radius: 13px; background: radial-gradient(ellipse at 80% 0,rgba(131,89,224,.21),transparent 65%),#15131c; }
-.upgrade-orb { display: grid; place-items: center; width: 26px; height: 26px; margin-bottom: 12px; border-radius: 8px; color: #dacaff; background: rgba(151,117,252,.18); }
-.upgrade-card strong,.upgrade-card>span { display: block; }
-.upgrade-card strong { font-size: 12px; }
-.upgrade-card>span { margin-top: 5px; color: var(--muted); font-size: 11px; line-height: 1.5; }
-.upgrade-link { display: flex; width: 100%; justify-content: space-between; margin-top: 13px; padding: 0; border: 0; color: #c4aeff; background: none; font-size: 11px; cursor: pointer; }
 .profile-button { width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 7px 3px; border: 0; border-top: 1px solid var(--border); text-align: left; background: transparent; cursor: pointer; }
 .avatar,.top-avatar { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid rgba(186,163,255,.24); border-radius: 50%; color: #e4d8ff; background: linear-gradient(145deg,#45305d,#241c31); font-weight: 700; }
 .profile-copy { display: grid; gap: 2px; }
@@ -248,7 +242,6 @@ select.field-control { min-width: 112px; }
 .light-theme .hero-copy p,.light-theme .ring-label span { color: #6f6a7b; }
 .light-theme .progress-ring:before { background: #f3effb; }
 .light-theme .global-search,.light-theme .field-control,.light-theme .form-field input,.light-theme .form-field select,.light-theme .form-field textarea,.light-theme .chat-form textarea { color: var(--text); background: #fff; }
-.light-theme .upgrade-card { background: radial-gradient(ellipse at 80% 0,rgba(131,89,224,.13),transparent 65%),#f6f2ff; }
 .light-theme .task-name,.light-theme .event-title,.light-theme .record-title,.light-theme .record-table td,.light-theme .calendar-info h3,.light-theme .habit-card h3,.light-theme .note-card h3 { color: #302b3b; }
 .light-theme .record-table tr:hover td { background: rgba(40,25,70,.025); }
 .light-theme .chat-message { color: #373242; background: rgba(35,25,55,.04); }
